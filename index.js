@@ -1,11 +1,12 @@
 const express = require('express');
 const { Pool } = require('pg');
+const { insertBooks, getBookTitles, getBooksByAuthor, updateBookGenre, deleteBook } = require('./Queries/bookQueries'); // Adjusted import
 const app = express();
 const PORT = 3000;
 
 // PostgreSQL connection pool
 const pool = new Pool({
-    user: 'postgres', // Replace with your PostgreSQL username
+    user: 'your_username', // Replace with your PostgreSQL username
     host: 'localhost', // Update if necessary
     database: 'your_database', // Replace with your PostgreSQL database name
     password: 'your_password', // Replace with your PostgreSQL password
@@ -30,6 +31,60 @@ const initializeDatabase = async () => {
         console.error("Error initializing database:", err.message);
     }
 };
+
+// MongoDB Routes for Books
+
+// Route to insert books into MongoDB (populate the collection)
+app.post('/insert-books', async (req, res) => {
+    try {
+        await insertBooks();
+        res.status(200).json({ message: 'Books inserted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to insert books' });
+    }
+});
+
+// Route to retrieve all book titles
+app.get('/books/titles', async (req, res) => {
+    try {
+        const titles = await getBookTitles();
+        res.json(titles);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve book titles' });
+    }
+});
+
+// Route to find books by "J.R.R. Tolkien"
+app.get('/books/author/jrr-tolkien', async (req, res) => {
+    try {
+        const books = await getBooksByAuthor();
+        res.json(books);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve books by J.R.R. Tolkien' });
+    }
+});
+
+// Route to update the genre of "1984"
+app.put('/books/update-genre', async (req, res) => {
+    try {
+        await updateBookGenre();
+        res.status(200).json({ message: 'Updated the genre of "1984" to "Science Fiction".' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update genre' });
+    }
+});
+
+// Route to delete "The Hobbit"
+app.delete('/books/delete-hobbit', async (req, res) => {
+    try {
+        await deleteBook();
+        res.status(200).json({ message: 'Deleted "The Hobbit".' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete book' });
+    }
+});
+
+// Existing PostgreSQL Routes for Tasks
 
 // GET /tasks - Get all tasks
 app.get('/tasks', async (req, res) => {
