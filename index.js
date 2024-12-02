@@ -1,55 +1,100 @@
 const express = require('express');
+const { Pool } = require('pg');
 const app = express();
 const PORT = 3000;
 
+// PostgreSQL connection pool
+const pool = new Pool({
+    user: 'postgres', // Replace with your PostgreSQL username
+    host: 'localhost', // Update if necessary
+    database: 'your_database', // Replace with your PostgreSQL database name
+    password: 'your_password', // Replace with your PostgreSQL password
+    port: 5432, // Default PostgreSQL port
+});
+
 app.use(express.json());
 
-let tasks = [
-    { id: 1, description: 'Buy groceries', status: 'incomplete' },
-    { id: 2, description: 'Read a book', status: 'complete' },
-];
+// Check and create tasks table if it doesn't exist
+const initializeDatabase = async () => {
+    const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            description TEXT NOT NULL,
+            status VARCHAR(50) NOT NULL
+        );
+    `;
+    try {
+        await pool.query(createTableQuery);
+        console.log("Tasks table is ready.");
+    } catch (err) {
+        console.error("Error initializing database:", err.message);
+    }
+};
 
 // GET /tasks - Get all tasks
-app.get('/tasks', (req, res) => {
-    res.json(tasks);
+app.get('/tasks', async (req, res) => {
+    try {
+        const result = await pool.query('SELECT * FROM tasks;');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch tasks." });
+    }
 });
 
 // POST /tasks - Add a new task
-app.post('/tasks', (request, response) => {
-    const { id, description, status } = request.body;
-    if (!id || !description || !status) {
-        return response.status(400).json({ error: 'All fields (id, description, status) are required' });
+app.post('/tasks', async (req, res) => {
+    const { description, status } = req.body;
+    if (!description || !status) {
+        return res.status(400).json({ error: 'Description and status are required.' });
     }
-
-    tasks.push({ id, description, status });
-    response.status(201).json({ message: 'Task added successfully' });
+    try {
+        const result = await pool.query(
+            'INSERT INTO tasks (description, status) VALUES ($1, $2) RETURNING *;',
+            [description, status]
+        );
+        res.status(201).json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to add task." });
+    }
 });
 
 // PUT /tasks/:id - Update a task's status
-app.put('/tasks/:id', (request, response) => {
-    const taskId = parseInt(request.params.id, 10);
-    const { status } = request.body;
-    const task = tasks.find(t => t.id === taskId);
-
-    if (!task) {
-        return response.status(404).json({ error: 'Task not found' });
+app.put('/tasks/:id', async (req, res) => {
+    const taskId = parseInt(req.params.id, 10);
+    const { status } = req.body;
+    if (!status) {
+        return res.status(400).json({ error: 'Status is required.' });
     }
-    task.status = status;
-    response.json({ message: 'Task updated successfully' });
+    try {
+        const result = await pool.query(
+            'UPDATE tasks SET status = $1 WHERE id = $2 RETURNING *;',
+            [status, taskId]
+        );
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Task not found.' });
+        }
+        res.json(result.rows[0]);
+    } catch (err) {
+        res.status(500).json({ error: "Failed to update task." });
+    }
 });
 
 // DELETE /tasks/:id - Delete a task
-app.delete('/tasks/:id', (request, response) => {
-    const taskId = parseInt(request.params.id, 10);
-    const initialLength = tasks.length;
-    tasks = tasks.filter(t => t.id !== taskId);
-
-    if (tasks.length === initialLength) {
-        return response.status(404).json({ error: 'Task not found' });
+app.delete('/tasks/:id', async (req, res) => {
+    const taskId = parseInt(req.params.id, 10);
+    try {
+        const result = await pool.query('DELETE FROM tasks WHERE id = $1 RETURNING *;', [taskId]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'Task not found.' });
+        }
+        res.json({ message: 'Task deleted successfully.' });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to delete task." });
     }
-    response.json({ message: 'Task deleted successfully' });
 });
 
-app.listen(PORT, () => {
+// Start server and initialize database
+app.listen(PORT, async () => {
     console.log(`Server is running on http://localhost:${PORT}`);
+    await initializeDatabase();
 });
