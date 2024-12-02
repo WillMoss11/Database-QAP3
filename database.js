@@ -1,7 +1,7 @@
 // database.js
 const { MongoClient } = require('mongodb');
 
-const url = 'mongodb://localhost:27017';  // Change this if you're using a cloud MongoDB instance
+const url = 'mongodb://localhost:27017';
 const dbName = 'booksDB';
 
 async function connectToDB() {
