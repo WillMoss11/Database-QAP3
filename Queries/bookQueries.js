@@ -1,5 +1,5 @@
 // bookQueries.js
-const database = require('../database'); // Adjust path if it's in another folder
+const connectToDB = require('../database');
 
 // Sample books data
 const sampleBooks = [
