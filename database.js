@@ -1,14 +1,29 @@
-// database.js
-const { MongoClient } = require('mongodb');
+const { Pool } = require("pg"); // Import the Pool class from the pg
 
-const url = 'mongodb://localhost:27017';
-const dbName = 'booksDB';
+const pool = new Pool({
+  user: "postgres",
+  host: "localhost",
+  database: "booksDB", // Your PostgreSQL database
+  password: "LucWill53",
+  port: 5432,
+});
 
-async function connectToDB() {
-    const client = new MongoClient(url);
-    await client.connect();
-    console.log("Connected to MongoDB");
-    return client.db(dbName);
-}
+const createTasksTable = async () => {
+  const createTableQuery = `
+        CREATE TABLE IF NOT EXISTS tasks (
+            id SERIAL PRIMARY KEY,
+            description VARCHAR(255) NOT NULL,
+            status VARCHAR(50) NOT NULL DEFAULT 'incomplete'
+        );
+    `;
 
-module.exports = connectToDB;
+  try {
+    await pool.query(createTableQuery); // Execute the query to create the table
+    console.log("Tasks table created successfully");
+  } catch (error) {
+    console.error("Error creating tasks table:", error);
+    throw error;
+  }
+};
+
+module.exports = { pool, createTasksTable }; // Export the pool and createTasksTable function
